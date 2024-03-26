@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Feed with Rectangle Box</title>
+    <style>
+        #camera-feed {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(5px); /* Apply blur effect to the entire camera feed */
+        }
+
+        #rectangle-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            height: 100px;
+            border: 2px solid blue;
+            box-shadow: 0 0 10px blue;
+        }
+    </style>
+</head>
+<body>
+    <video id="camera-feed" autoplay playsinline></video>
+    <div id="rectangle-box"></div>
+
+    <script>
+        const video = document.getElementById('camera-feed');
+        const rectangleBox = document.getElementById('rectangle-box');
+        let captureFlag = false;
+
+        // Set up the camera
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                video.srcObject = stream;
+                video.onloadedmetadata = () => {
+                    video.play();
+                    // Adjust the size and position of the rectangle box based on the video dimensions
+                    const { videoWidth, videoHeight } = video;
+                    const boxWidth = 200;
+                    const boxHeight = 100;
+                    const boxX = (videoWidth - boxWidth) / 2;
+                    const boxY = (videoHeight - boxHeight) / 2;
+                    rectangleBox.style.width = boxWidth + 'px';
+                    rectangleBox.style.height = boxHeight + 'px';
+                    rectangleBox.style.left = boxX + 'px';
+                    rectangleBox.style.top = boxY + 'px';
+                };
+            })
+            .catch(error => {
+                console.error('Error accessing the camera:', error);
+            });
+
+        // Click event listener to capture the image inside the rectangle box
+        rectangleBox.addEventListener('click', () => {
+            captureFlag = true;
+        });
+
+        // Function to capture the image inside the rectangle box
+        function captureImage() {
+            if (captureFlag) {
+                const canvas = document.createElement('canvas');
+                const { videoWidth, videoHeight } = video;
+                canvas.width = videoWidth;
+                canvas.height = videoHeight;
+                const context = canvas.getContext('2d');
+                context.drawImage(video, 0, 0, videoWidth, videoHeight);
+                const imageData = context.getImageData(boxX, boxY, boxWidth, boxHeight);
+                const croppedCanvas = document.createElement('canvas');
+                croppedCanvas.width = boxWidth;
+                croppedCanvas.height = boxHeight;
+                const croppedContext = croppedCanvas.getContext('2d');
+                croppedContext.putImageData(imageData, 0, 0);
+                const capturedImage = croppedCanvas.toDataURL('image/png');
+                console.log('Captured image:', capturedImage);
+                // Send the captured image to the server or process it as needed
+                captureFlag = false;
+            }
+        }
+
+        // Call the captureImage function in a loop to continuously capture images
+        setInterval(captureImage, 1000); // Adjust the interval as needed
+    </script>
+</body>
+</html>
